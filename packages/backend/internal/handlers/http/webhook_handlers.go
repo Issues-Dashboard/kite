@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/konflux-ci/kite/internal/config"
@@ -52,6 +53,22 @@ type PipelineFailureRequest struct {
 type PipelineSuccessRequest struct {
 	PipelineName string `json:"pipelineName" binding:"required"`
 	Namespace    string `json:"namespace" binding:"required"`
+}
+
+// MintmakerRequest represents the payload for a custom mintmaker webhook.
+//
+// Fields:
+//   - pipelineId:	(string, required) 	- Identifier of the mintmaker run (repo/branch)
+//   - It is a repo/branch (component specification)
+//   - We cannot use pipeline name as that is unique for each run which would not work for issues scoping.
+//   - namespace:    (string, required) - Kubernetes namespace which owns the component.
+//   - type: (string, required) - Type of the issue (error, warning, info).
+//   - logs: (array of strings, required) - Logs of the issue.
+type MintmakerRequest struct {
+	PipelineId string   `json:"pipelineId" binding:"required"`
+	Namespace  string   `json:"namespace" binding:"required"`
+	Type       string   `json:"type" binding:"required"`
+	Logs       []string `json:"logs"`
 }
 
 // PipelineFailure handles pipeline failure webhooks with idempotent behavior.
@@ -186,5 +203,80 @@ func (h *WebhookHandler) PipelineSuccess(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
 		"message": fmt.Sprintf("Resolved %d issue(s) for pipeline %s", resolved, req.PipelineName),
+	})
+}
+
+// MintmakerIssues handles custom mintmaker webhooks.
+//
+// Request Body:
+//   - pipelineId: (string, required) - Identifier of the mintmaker run (repo/branch)
+//   - namespace:    (string, required) - Kubernetes namespace which owns the component.
+//   - type: (string, required) - Type of the issue (error, warning, info).
+//   - logs: (array of strings, required) - Logs of the issue.
+//
+// Response:
+//   - 200 OK: Issue was created or updated successfully
+//   - 400 Bad Request: Missing required fields
+//   - 500 Internal Server Error: Database or processing error
+func (h *WebhookHandler) MintmakerIssues(c *gin.Context) {
+	var req MintmakerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields", "details": err.Error()})
+		return
+	}
+
+	// Validate logs array (safety net)
+	if len(req.Logs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"info": "No logs provided, no issue created"})
+		return
+	}
+
+	severity := models.SeverityMajor
+	switch req.Type {
+	case "error":
+		severity = models.SeverityMajor
+	case "warning":
+		severity = models.SeverityMinor
+	default:
+		severity = models.SeverityInfo
+	}
+
+	issueData := dto.CreateIssueRequest{
+		Title:       fmt.Sprintf("Mintmaker %s(%d): %s", req.Type, len(req.Logs), req.PipelineId),
+		Description: strings.Join(req.Logs, "\n--------------------------------\n"),
+		Severity:    severity,
+		IssueType:   models.IssueTypeDependency,
+		Namespace:   req.Namespace,
+		Scope: dto.ScopeReqBody{
+			ResourceType:      fmt.Sprintf("mintmaker-%s", req.Type),
+			ResourceName:      req.PipelineId,
+			ResourceNamespace: req.Namespace,
+		},
+		Links: []dto.CreateLinkRequest{
+			{
+				Title: "Mintmaker docs",
+				URL:   "https://konflux-ci.dev/docs/mintmaker/user/",
+			},
+			{
+				Title: "Renovate docs",
+				URL:   "https://docs.renovatebot.com/configuration-options/",
+			},
+		},
+		// in future ideally -> AutoResolveAt: time.Now().Add(48 * time.Hour),
+	}
+
+	// Create or update the issue
+	issue, err := h.issueService.CreateOrUpdateIssue(c, issueData)
+	if err != nil {
+		h.logger.WithError(err).Error(fmt.Sprintf("Failed to create or update dependency (%s) issue", req.Type))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process webhook"})
+		return
+	}
+
+	h.logger.WithField("issue_id", issue.ID).Info(fmt.Sprintf("Processed dependency (%s) issue", req.Type))
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status": "success",
+		"issue":  issue,
 	})
 }
