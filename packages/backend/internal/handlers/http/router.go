@@ -67,6 +67,8 @@ func SetupRouter(db *gorm.DB, logger *logrus.Logger) (*gin.Engine, error) {
 	{
 		webhooksGroup.POST("/pipeline-failure", webhookHandler.PipelineFailure)
 		webhooksGroup.POST("/pipeline-success", webhookHandler.PipelineSuccess)
+		// custom webhook for mintmaker
+		webhooksGroup.POST("/mintmaker-custom", webhookHandler.MintmakerIssues)
 	}
 
 	// Health and version endpoints
