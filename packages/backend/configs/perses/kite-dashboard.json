@@ -1,0 +1,267 @@
+{
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "kite-overview",
+    "project": "kite-dev"
+  },
+  "spec": {
+    "display": {
+      "name": "Kite Backend Overview"
+    },
+    "duration": "1h",
+    "refreshInterval": "30s",
+    "variables": [],
+    "panels": {
+      "http-requests": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "HTTP Request Rate (per endpoint)"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": {
+                "position": "bottom"
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "rate(kite_http_requests_total[5m])"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "request-duration": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "HTTP Request Duration (p95)"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": {
+                "position": "bottom"
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "histogram_quantile(0.95, sum by(le, endpoint) (rate(kite_http_request_duration_seconds_bucket[5m])))"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "issues-by-namespace": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Issues by Namespace"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": {
+                "position": "bottom"
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by(namespace, state) (kite_issues_by_namespace)"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "issues-by-severity": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Issues by Severity"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": {
+                "position": "bottom"
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by(severity, state) (kite_issues_by_severity)"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "db-connections": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Database Connections"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": {
+                "position": "bottom"
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "kite_database_connections_active",
+                    "seriesNameFormat": "Active"
+                  }
+                }
+              }
+            },
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "kite_database_connections_idle",
+                    "seriesNameFormat": "Idle"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "total-issues": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Total Issues"
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": {
+                "position": "bottom"
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum(kite_issues_total)"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "layouts": [
+      {
+        "kind": "Grid",
+        "spec": {
+          "items": [
+            {
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 5,
+              "content": {
+                "$ref": "#/spec/panels/http-requests"
+              }
+            },
+            {
+              "x": 0,
+              "y": 5,
+              "width": 12,
+              "height": 5,
+              "content": {
+                "$ref": "#/spec/panels/request-duration"
+              }
+            },
+            {
+              "x": 0,
+              "y": 10,
+              "width": 6,
+              "height": 5,
+              "content": {
+                "$ref": "#/spec/panels/issues-by-namespace"
+              }
+            },
+            {
+              "x": 6,
+              "y": 10,
+              "width": 6,
+              "height": 5,
+              "content": {
+                "$ref": "#/spec/panels/issues-by-severity"
+              }
+            },
+            {
+              "x": 0,
+              "y": 15,
+              "width": 6,
+              "height": 5,
+              "content": {
+                "$ref": "#/spec/panels/total-issues"
+              }
+            },
+            {
+              "x": 6,
+              "y": 15,
+              "width": 6,
+              "height": 5,
+              "content": {
+                "$ref": "#/spec/panels/db-connections"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

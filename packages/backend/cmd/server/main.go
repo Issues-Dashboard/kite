@@ -8,10 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/konflux-ci/kite/internal/config"
 	handler_http "github.com/konflux-ci/kite/internal/handlers/http"
+	"github.com/konflux-ci/kite/internal/metrics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -67,6 +69,14 @@ func main() {
 	if err != nil {
 		logger.WithError(err).Fatal("Failed to setup router")
 	}
+
+	// Start metrics collector
+	metricsCollector := metrics.NewCollector(db, logger)
+	metricsCtx, metricsCancel := context.WithCancel(context.Background())
+	defer metricsCancel()
+
+	go metricsCollector.Start(metricsCtx, 30*time.Second)
+	logger.Info("Metrics collector started (30s interval)")
 
 	// Setup HTTP server with configuration
 	server := &http.Server{
