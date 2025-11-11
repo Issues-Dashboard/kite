@@ -34,6 +34,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -93,6 +94,9 @@ func main() {
 		"kite-api-url",
 		getEnvOrDefault("KITE_API_URL", "http://localhost:8080"),
 		"KITE API Base URL")
+	
+	// Namespace to watch (empty = all namespaces)
+	watchNamespace := getEnvOrDefault("WATCH_NAMESPACE", "")
 
 	opts := zap.Options{
 		Development: true,
@@ -201,7 +205,7 @@ func main() {
 			config.GetCertificate = metricsCertWatcher.GetCertificate
 		})
 	}
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	managerOptions := ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
@@ -219,7 +223,19 @@ func main() {
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
-	})
+	}
+	
+	// If WATCH_NAMESPACE is set, configure the manager to watch only that namespace
+	if watchNamespace != "" {
+		setupLog.Info("Watching specific namespace", "namespace", watchNamespace)
+		managerOptions.Cache.DefaultNamespaces = map[string]cache.Config{
+			watchNamespace: {},
+		}
+	} else {
+		setupLog.Info("Watching all namespaces (cluster-wide)")
+	}
+	
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)

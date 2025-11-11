@@ -59,7 +59,26 @@ This is used by the service to talk to the cluster, allowing it to perform actio
 
 ### 5. Access the Application
 
-- API: http://localhost:8080/api/v1/health/
+- **API**: http://localhost:8080/api/v1/health/
+- **Prometheus Metrics**: http://localhost:8080/metrics
+- **Prometheus UI**: http://localhost:9090
+- **Perses Dashboards**: http://localhost:3000
+
+The development environment includes a full observability stack:
+- Prometheus scrapes metrics from the backend and metrics are collected on-demand
+- Perses provides visualization with a pre-configured dashboard
+- All metrics defined in `internal/metrics` are automatically exposed
+- The `perses-setup` container automatically initializes Perses on first startup
+
+The Kite dashboard is automatically loaded from `configs/perses/kite-dashboard.json` and includes:
+- HTTP Request Rate per endpoint
+- HTTP Request Duration (p95)
+- Issues by Namespace and Severity  
+- Database Connection Pool metrics
+
+Access the dashboard at: **http://localhost:3000/projects/kite-dev/dashboards/kite-overview**
+
+Note: Perses data persists in the `perses_data` volume, so the dashboard setup only runs once.
 
 ## Migrations
 
