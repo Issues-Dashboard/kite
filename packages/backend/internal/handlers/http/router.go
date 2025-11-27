@@ -2,6 +2,7 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	kiteConf "github.com/konflux-ci/kite/internal/config"
 	"github.com/konflux-ci/kite/internal/middleware"
 	"github.com/konflux-ci/kite/internal/repository"
@@ -25,6 +26,7 @@ func SetupRouter(db *gorm.DB, logger *logrus.Logger) (*gin.Engine, error) {
 	router.Use(middleware.ErrorHandler(logger))
 	router.Use(middleware.CORS())
 	router.Use(gin.Recovery())
+	router.Use(middleware.MetricsMiddleware())
 
 	// Initialize repository
 	issueRepo := repository.NewIssueRepository(db, logger)
@@ -59,11 +61,8 @@ func SetupRouter(db *gorm.DB, logger *logrus.Logger) (*gin.Engine, error) {
 		issuesGroup.DELETE("/:id/related/:relatedId", middleware.ValidateID(), issueHandler.RemoveRelatedIssue)
 	}
 
-	// Webhook routes with namespace checking
+	// Webhook routes (no RBAC - meant for service-to-service calls)
 	webhooksGroup := v1.Group("/webhooks")
-	if namespaceChecker != nil {
-		webhooksGroup.Use(namespaceChecker.CheckNamespacessAccess())
-	}
 	{
 		webhooksGroup.POST("/pipeline-failure", webhookHandler.PipelineFailure)
 		webhooksGroup.POST("/pipeline-success", webhookHandler.PipelineSuccess)
@@ -86,6 +85,9 @@ func SetupRouter(db *gorm.DB, logger *logrus.Logger) (*gin.Engine, error) {
 			"version":     kiteConf.GetEnvOrDefault("KITE_VERSION", "0.0.1"),
 		})
 	})
+
+	// Prometheus metrics endpoint
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	return router, nil
 }
