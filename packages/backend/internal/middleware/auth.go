@@ -10,8 +10,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	authv1 "k8s.io/api/authorization/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -73,6 +71,7 @@ func NewNamespaceChecker(logger *logrus.Logger) (*NamespaceChecker, error) {
 func (nc *NamespaceChecker) CheckNamespacessAccess() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get namespaces from params, body or query
+		authorization := c.GetHeader("Authorization")
 		namespace := c.Param("namespace")
 		if namespace == "" {
 			namespace = c.Query("namespace")
@@ -96,6 +95,12 @@ func (nc *NamespaceChecker) CheckNamespacessAccess() gin.HandlerFunc {
 			return
 		}
 
+		if authorization == "" {
+			c.JSON(http.StatusUnauthorized,gin.H{"error": "Unauthorized request"})
+			c.Abort()
+			return
+		}
+
 		// If K8s client is not available, skip check
 		if nc.client == nil {
 			nc.logger.Debug("Kubernetes client not available, skipping namespace access check")
@@ -104,7 +109,7 @@ func (nc *NamespaceChecker) CheckNamespacessAccess() gin.HandlerFunc {
 		}
 
 		// Check if user has access to the namespace by checking if they can get pods
-		if err := nc.checkPodAccess(namespace); err != nil {
+		if err := nc.checkPodAccess(namespace, authorization); err != nil {
 			nc.logger.WithError(err).WithField("namespace", namespace).Warn("Access Denied")
 			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to this namespace"})
 			c.Abort()
@@ -116,35 +121,28 @@ func (nc *NamespaceChecker) CheckNamespacessAccess() gin.HandlerFunc {
 	}
 }
 
-func (nc *NamespaceChecker) checkPodAccess(namespace string) error {
+func (nc *NamespaceChecker) checkPodAccess(namespace string, authorization string) error {
 	if nc.client == nil {
 		return nil // Skip check if client is not available
 	}
 
-	// Create a SelfSubjectAccessReview to check if the user can get pods in the namespace
-	accessReview := &authv1.SelfSubjectAccessReview{
-		Spec: authv1.SelfSubjectAccessReviewSpec{
-			ResourceAttributes: &authv1.ResourceAttributes{
-				Namespace: namespace,
-				Verb:      "get",
-				Resource:  "pods",
-			},
-		},
-	}
+	// Check if requestor has access to namespace
+	checkNs := nc.client.CoreV1().RESTClient().Get().Namespace(namespace).Resource("pods").SetHeader("Authorization", authorization)
 
 	// Run the access review for max 10 seconds
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	result, err := nc.client.AuthorizationV1().SelfSubjectAccessReviews().Create(
-		ctx, accessReview, metav1.CreateOptions{})
+	var statusCode int
+	result := checkNs.Do(ctx)
+	result.StatusCode(&statusCode)
 
-	if err != nil {
-		return fmt.Errorf("failed to check namespace access: %w", err)
+	if statusCode != 200 {
+		return fmt.Errorf("access denied to namespace %s. StatusCode %d", namespace, statusCode)
 	}
 
-	if !result.Status.Allowed {
-		return fmt.Errorf("access denied to namespace %s", namespace)
+	if statusCode == 200 {
+		nc.logger.Info("Access allowed to namespace %s", namespace)
 	}
 
 	return nil
