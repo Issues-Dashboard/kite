@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -118,8 +119,8 @@ func (nc *NamespaceChecker) Authentication(cache *cache.Cache, cacheExpirationAu
 	return func(c *gin.Context) {
 		token, err := extractBearerToken(c.GetHeader("Authorization"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing Authorization"})
-			c.Abort()
+			c.Set("type", "publisher")
+			c.Next()
 			return
 		}
 
@@ -132,6 +133,7 @@ func (nc *NamespaceChecker) Authentication(cache *cache.Cache, cacheExpirationAu
 			}
 
 			c.Set("user", userInfo)
+			c.Set("type", "consumer")
 			c.Next()
 			return
 		}
@@ -157,6 +159,7 @@ func (nc *NamespaceChecker) Authentication(cache *cache.Cache, cacheExpirationAu
 		cache.Set(token, userInfo, cacheExpirationAuthorized)
 
 		c.Set("user", userInfo)
+		c.Set("type", "consumer")
 	}
 }
 
@@ -311,6 +314,11 @@ func (nc *NamespaceChecker) Impersonation(
 	}
 
 	return func(c *gin.Context) {
+		user_type, _ := c.Get("type")
+		if user_type == "publisher" {
+			c.Next()
+			return
+	}
 		imp, imperErr := newImpersonatedData(c)
 		if imperErr != nil && !errors.Is(imperErr, ErrNoImpersonationData) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": imperErr})
@@ -333,7 +341,6 @@ func (nc *NamespaceChecker) Impersonation(
 		if !okCast {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unexpected user type in context"})
 			c.Abort()
-			// abort.Abort(c, fmt.Errorf("unexpected user type in context: %T", requester), http.StatusInternalServerError)
 			return
 		}
 		for _, resourceAttribute := range imp.resourceAttributes {
@@ -341,12 +348,12 @@ func (nc *NamespaceChecker) Impersonation(
 				Spec: authv1.SubjectAccessReviewSpec{
 					User: requesterInfo.GetName(),
 					UID: requesterInfo.GetUID(),
-					Groups: requesterInfo.getGroupds(),
+					Groups: requesterInfo.GetGroups(),
 					ResourceAttributes: resourceAttribute,
 				},
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), cacheExpirationAuthorized)
 			defer cancel()
 
 			_, err := nc.client.AuthorizationV1().SubjectAccessReviews().Create(
