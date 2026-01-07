@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: 'kite-backend'
+    static_configs:
+      - targets: ['app:8080']
+    metrics_path: '/metrics'
+
