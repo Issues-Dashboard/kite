@@ -57,5 +57,47 @@ services:
       retries: 5
     restart: unless-stopped
 
+  prometheus:
+    container_name: kite_prometheus
+    image: quay.io/prometheus/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+      - prometheus_data:/prometheus
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+  perses:
+    container_name: kite_perses
+    image: docker.io/persesdev/perses:v0.48.0
+    ports:
+      - "3000:8080"
+    volumes:
+      - perses_data:/var/perses
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  perses-setup:
+    container_name: kite_perses_setup
+    image: docker.io/curlimages/curl:latest
+    volumes:
+      - ./scripts/dev/setup-perses.sh:/setup.sh:ro,Z
+      - ./configs/perses/kite-dashboard.json:/dashboard/kite-dashboard.json:ro,Z
+    command: sh /setup.sh
+    depends_on:
+      - perses
+    restart: "no"
+
 volumes:
   pgdata:
+  prometheus_data:
+  perses_data:

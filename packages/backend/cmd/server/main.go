@@ -12,6 +12,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/konflux-ci/kite/internal/config"
 	handler_http "github.com/konflux-ci/kite/internal/handlers/http"
+	"github.com/konflux-ci/kite/internal/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
 
@@ -62,11 +64,14 @@ func main() {
 		}
 	}()
 
-	// Setup router
 	router, err := handler_http.SetupRouter(db, logger)
 	if err != nil {
 		logger.WithError(err).Fatal("Failed to setup router")
 	}
+
+	metricsCollector := metrics.NewCollector(db, logger)
+	prometheus.MustRegister(metricsCollector)
+	logger.Info("Metrics collector registered")
 
 	// Setup HTTP server with configuration
 	server := &http.Server{
