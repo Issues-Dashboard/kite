@@ -47,6 +47,7 @@ type SecurityConfig struct {
 type FeatureFlags struct {
 	EnableNamespaceChecking bool
 	EnableWebhooks          bool
+	Impersonation           bool
 }
 
 // LoadConfig loads configuration from environment variables
@@ -81,6 +82,7 @@ func LoadConfig() (*Config, error) {
 		Features: FeatureFlags{
 			EnableNamespaceChecking: GetEnvBoolOrDefault("KITE_FEATURE_NAMESPACE_CHECKING", true),
 			EnableWebhooks:          GetEnvBoolOrDefault("KITE_FEATURE_WEBHOOKS", true),
+			Impersonation:           GetEnvBoolOrDefault("KITE_FEATURE_IMPERSONATION", true),
 		},
 	}
 
