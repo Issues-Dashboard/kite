@@ -26,7 +26,7 @@ import (
 	kiteConf "github.com/konflux-ci/kite/internal/config"
 )
 
-var impersonateFlag = kiteConf.GetEnvBoolOrDefault("KITE_FEATURE_IMPERSONATION", true)
+var is_impersonate_enabled = kiteConf.GetEnvBoolOrDefault("KITE_FEATURE_IMPERSONATION", true)
 
 var ErrNoImpersonationData = errors.New("no impersonation data found")
 
@@ -308,7 +308,7 @@ func (nc *NamespaceChecker) Impersonation(
 	cacheExpirationAuthorized,
 	cacheExpirationUnauthorized time.Duration) gin.HandlerFunc {
 
-	if impersonateFlag != "true" {
+	if !is_impersonate_enabled {
 		return func(c *gin.Context) {
 			c.Next()
 		}
