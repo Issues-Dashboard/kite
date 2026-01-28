@@ -48,7 +48,7 @@ func SetupRouter(db *gorm.DB, logger *logrus.Logger) (*gin.Engine, error) {
 	v1 := router.Group("/api/v1")
 
 	// Add middleware for authentication in non development environment
-	kiteEnv := kiteConf.GetEnvOrDefault("KITE_PROJECT_ENV", "development")
+	kiteEnv := kiteConf.GetEnvOrDefault("KITE_PROJECT_ENV", "staging")
 	if kiteEnv != "development" {
 		v1.Use(namespaceChecker.Authentication(cache, 10 * time.Second, 10 * time.Second))
 		v1.Use(namespaceChecker.Impersonation(cache, 10 * time.Second, 10 * time.Second))
