@@ -21,9 +21,11 @@ if [ "$KITE_PROJECT_ENV" = "development" ]; then
   KITE_DB_SSL_MODE="disable"
 fi
 
+DB_PASSWORD=$(jq -nr --arg s "$KITE_DB_PASSWORD" '$s | @uri')
+
 atlas migrate apply \
   --dir "file://migrations" \
-  --url "postgres://$KITE_DB_USER:$KITE_DB_PASSWORD@$KITE_DB_HOST:$KITE_DB_PORT/$KITE_DB_NAME?sslmode=$KITE_DB_SSL_MODE"
+  --url "postgres://$KITE_DB_USER:$DB_PASSWORD@$KITE_DB_HOST:$KITE_DB_PORT/$KITE_DB_NAME?sslmode=$KITE_DB_SSL_MODE"
 
 # Check if migrations succeeded
 # Get exit status of last command

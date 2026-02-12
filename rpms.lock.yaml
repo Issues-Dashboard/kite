@@ -1019,5 +1019,12 @@ arches:
     name: postgresql-private-libs
     evr: 13.20-1.el9_5
     sourcerpm: postgresql-13.20-1.el9_5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/j/jq-1.6-19.el9.x86_64.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 191662
+    checksum: sha256:6b4d82714813d7b4a3200bf2856a3c1493d186e9caa916d7a700ec25e4996462
+    name: jq
+    evr: 1.6-19.el9
+    sourcerpm: jq-1.6-19.el9.src.rpm
   source: []
   module_metadata: []
