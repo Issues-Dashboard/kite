@@ -4,4 +4,5 @@ contentOrigin:
 packages:
   - git
   - postgresql
+  - jq
 arches: [x86_64]

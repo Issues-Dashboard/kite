@@ -14,9 +14,13 @@ data "external_schema" "gorm" {
   ]
 }
 
+locals {
+  db_password = urlescape(getenv("KITE_DB_PASSWORD"))
+}
+
 variable "database_url" {
   type    = string
-  default = "postgres://${getenv("KITE_DB_USER")}:${getenv("KITE_DB_PASSWORD")}@${getenv("KITE_DB_HOST")}:${getenv("KITE_DB_PORT")}/${getenv("KITE_DB_NAME")}?sslmode=${getenv("KITE_DB_SSL_MODE")}"
+  default = "postgres://${getenv("KITE_DB_USER")}:${local.db_password}@${getenv("KITE_DB_HOST")}:${getenv("KITE_DB_PORT")}/${getenv("KITE_DB_NAME")}?sslmode=${getenv("KITE_DB_SSL_MODE")}"
 }
 
 # data.external_schema.gorm -> Run the program above to get schema info
