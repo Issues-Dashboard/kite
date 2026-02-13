@@ -23,9 +23,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	kiteConf "github.com/konflux-ci/kite/internal/config"
 )
 
-const impersonateFlag = "AUTH_IMPERSONATE"
+var is_impersonate_enabled = kiteConf.GetEnvBoolOrDefault("KITE_FEATURE_IMPERSONATION", true)
 
 var ErrNoImpersonationData = errors.New("no impersonation data found")
 
@@ -307,7 +308,7 @@ func (nc *NamespaceChecker) Impersonation(
 	cacheExpirationAuthorized,
 	cacheExpirationUnauthorized time.Duration) gin.HandlerFunc {
 
-	if os.Getenv(impersonateFlag) != "true" {
+	if !is_impersonate_enabled {
 		return func(c *gin.Context) {
 			c.Next()
 		}
