@@ -28,3 +28,11 @@ jobs:
         run: |
           go mod tidy
           make test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ${{ inputs.workdir }}/cover.out
+          flags: operator
+          fail_ci_if_error: false

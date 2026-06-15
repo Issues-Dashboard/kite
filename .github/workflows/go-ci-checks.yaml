@@ -4,7 +4,9 @@ on:
   pull_request:
     branches: ["**"]
     paths:
-      - 'packages/backend'
+      - 'packages/backend/**'
+      - 'configs/golangci.yml'
+      - '.codecov.yml'
 
 jobs:
   ci:
@@ -16,12 +18,13 @@ jobs:
 
     steps:
       - name: Checkout branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version-file: packages/backend/go.mod
+          cache-dependency-path: packages/backend/go.mod
 
       - name: Run go mod tidy
         run: |
@@ -40,8 +43,9 @@ jobs:
       - name: Run linter
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.1
+          version: v2.1.0
           working-directory: packages/backend
+          args: --config=${{ github.workspace }}/configs/golangci.yml
 
       - name: Run go fmt
         run: |
@@ -64,5 +68,12 @@ jobs:
 
       - name: Run go tests
         run: |
-          go test -v ./internal/...
+          make test
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: packages/backend/cover.out
+          flags: backend
+          fail_ci_if_error: false

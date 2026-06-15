@@ -18,3 +18,7 @@ packages/backend/vendor/
 packages/backend/configs/kube-config.yaml
 # Generated binary
 packages/cli/konflux-issues
+
+# Test coverage profiles
+cover.out
+**/cover.out
