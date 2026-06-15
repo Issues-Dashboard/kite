@@ -9,7 +9,7 @@ on:
       golangci-config:
         required: false
         type: string
-        default: ""
+        default: configs/golangci.yml
 
 jobs:
   lint:
@@ -30,4 +30,4 @@ jobs:
         with:
           version: v2.1.0
           working-directory: ${{ inputs.workdir }}
-          args: ${{ inputs.golangci-config != '' && format('--config={0}', inputs.golangci-config) || '' }}
+          args: --config=${{ github.workspace }}/${{ inputs.golangci-config }}

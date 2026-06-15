@@ -13,7 +13,7 @@ jobs:
     uses: ./.github/workflows/go-lint.yml
     with:
       workdir: packages/cli
-      golangci-config: ${{ github.workspace }}/configs/golangci.yml
+      golangci-config: configs/golangci.yml
 
   test:
     uses: ./.github/workflows/go-test.yml
