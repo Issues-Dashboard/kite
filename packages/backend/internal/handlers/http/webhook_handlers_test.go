@@ -103,9 +103,8 @@ func TestWebhookHandler_PipelineFailure(t *testing.T) {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
-	expectedStatus := "success"
-	if response["status"] != expectedStatus {
-		t.Errorf("expected response with status '%s', got '%s'", expectedStatus, response["status"])
+	if response["status"] != webhookStatusSuccess {
+		t.Errorf("expected response with status '%s', got '%s'", webhookStatusSuccess, response["status"])
 	}
 
 	// Convert response data to JSON
@@ -174,9 +173,8 @@ func TestWebhookHandler_PipelineSuccess(t *testing.T) {
 	}
 
 	// Check status of response
-	expectedStatus := "success"
-	if response["status"] != expectedStatus {
-		t.Errorf("expected response with status '%s', got '%s'", expectedStatus, response["status"])
+	if response["status"] != webhookStatusSuccess {
+		t.Errorf("expected response with status '%s', got '%s'", webhookStatusSuccess, response["status"])
 	}
 
 	// Check message in response
@@ -248,9 +246,8 @@ func TestWebhookHandler_ReleaseFailure(t *testing.T) {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
-	expectedStatus := "success"
-	if response["status"] != expectedStatus {
-		t.Errorf("expected response with status '%s', got '%s'", expectedStatus, response["status"])
+	if response["status"] != webhookStatusSuccess {
+		t.Errorf("expected response with status '%s', got '%s'", webhookStatusSuccess, response["status"])
 	}
 
 	// Convert response data to JSON
@@ -319,9 +316,8 @@ func TestWebhookHandler_ReleaseSuccess(t *testing.T) {
 	}
 
 	// Check status of response
-	expectedStatus := "success"
-	if response["status"] != expectedStatus {
-		t.Errorf("expected response with status '%s', got '%s'", expectedStatus, response["status"])
+	if response["status"] != webhookStatusSuccess {
+		t.Errorf("expected response with status '%s', got '%s'", webhookStatusSuccess, response["status"])
 	}
 
 	// Check message in response

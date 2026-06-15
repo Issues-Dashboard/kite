@@ -17,7 +17,7 @@ import (
 
 func main() {
 	// Load environment variable
-	projectEnv := config.GetEnvOrDefault("KITE_PROJECT_ENV", "development")
+	projectEnv := config.GetEnvOrDefault("KITE_PROJECT_ENV", config.EnvDevelopment)
 	fileName := fmt.Sprintf(".env.%s", projectEnv)
 	envFile, err := config.GetEnvFileInCwd(fileName)
 	if err != nil {
@@ -86,8 +86,10 @@ func main() {
 			"environment": cfg.Server.Environment,
 		}).Info("Starting Server")
 
-		if projectEnv != "development" {
-			if err := server.ListenAndServeTLS("/var/tls/tls.crt", "/var/tls/tls.key"); err != nil && err != http.ErrServerClosed {
+		if projectEnv != config.EnvDevelopment {
+			if err := server.ListenAndServeTLS(
+				"/var/tls/tls.crt", "/var/tls/tls.key",
+			); err != nil && err != http.ErrServerClosed {
 				logger.WithError(err).Fatal("Failed to start server")
 			}
 		} else {
@@ -103,7 +105,7 @@ func main() {
 	// Notify 'quit' channel whenver the process receives SIGINT (Ctrl+C) or SIGTERM
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	// Block here (don't run anything after the next line) until one of those signals is received
-	// Because the buffer size is one, once the signal is recieved we'll process the rest of the function.
+	// Because the buffer size is one, once the signal is received we'll process the rest of the function.
 	<-quit
 
 	logger.Info("Shutting down server...")

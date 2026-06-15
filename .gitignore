@@ -22,3 +22,7 @@ packages/cli/konflux-issues
 # Test coverage profiles
 cover.out
 **/cover.out
+
+# Locally installed dev tools (downloaded by make lint, make test, etc.)
+packages/backend/bin/
+packages/cli/bin/

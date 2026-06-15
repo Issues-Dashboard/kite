@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	// EnvDevelopment is the local development environment name.
+	EnvDevelopment = "development"
+)
+
 // Config holds all application configuration
 type Config struct {
 	Server   ServerConfig
@@ -33,7 +38,7 @@ type ServerConfig struct {
 // LoggingConfig holds all logging configuration
 type LoggingConfig struct {
 	Level  string
-	Format string //json or text
+	Format string // json or text
 }
 
 // SecurityConfig holds all security-related configuration
@@ -106,7 +111,7 @@ func (c *Config) Validate() error {
 	}
 
 	// Validate project environment
-	validEnvs := []string{"development", "staging", "production", "test"}
+	validEnvs := []string{EnvDevelopment, "staging", "production", "test"}
 	if !slices.Contains(validEnvs, c.Server.Environment) {
 		return fmt.Errorf("invalid project environment: %s (must be one of: %s)",
 			c.Server.Environment, strings.Join(validEnvs, ", "))
@@ -120,7 +125,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("database user is required")
 	}
 	if c.Database.Name == "" {
-		return fmt.Errorf("database name is requried")
+		return fmt.Errorf("database name is required")
 	}
 
 	// Validate logging configuration
@@ -143,7 +148,7 @@ func (c *Config) Validate() error {
 
 // IsDevelopment returns true if running in development mode
 func (c *Config) IsDevelopment() bool {
-	return c.Server.Environment == "development"
+	return c.Server.Environment == EnvDevelopment
 }
 
 func (c *Config) IsProduction() bool {

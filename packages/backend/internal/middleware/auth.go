@@ -114,7 +114,7 @@ func extractBearerToken(header string) (string, error) {
 	return jwtToken[1], nil
 }
 
-func (nc *NamespaceChecker) Authentication(cache *cache.Cache, cacheExpirationAuthorized, cacheExpirationUnauthorized time.Duration) gin.HandlerFunc {
+func (nc *NamespaceChecker) Authentication(authCache *cache.Cache, cacheExpirationAuthorized, cacheExpirationUnauthorized time.Duration) gin.HandlerFunc {
 	tri := nc.client.AuthenticationV1().TokenReviews()
 	return func(c *gin.Context) {
 		token, err := extractBearerToken(c.GetHeader("Authorization"))
@@ -124,7 +124,7 @@ func (nc *NamespaceChecker) Authentication(cache *cache.Cache, cacheExpirationAu
 			return
 		}
 
-		userInfo := cache.Get(token)
+		userInfo := authCache.Get(token)
 		if userInfo != nil {
 			if userInfo == false { // Unauthenticated
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
@@ -151,12 +151,12 @@ func (nc *NamespaceChecker) Authentication(cache *cache.Cache, cacheExpirationAu
 		if !tr.Status.Authenticated {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
 			c.Abort()
-			cache.Set(token, false, cacheExpirationUnauthorized)
+			authCache.Set(token, false, cacheExpirationUnauthorized)
 			return
 		}
 
 		userInfo = newDefaultInfoFromAuthN(tr.Status.User)
-		cache.Set(token, userInfo, cacheExpirationAuthorized)
+		authCache.Set(token, userInfo, cacheExpirationAuthorized)
 
 		c.Set("user", userInfo)
 		c.Set("type", "consumer")
@@ -303,7 +303,7 @@ func parseExtras(headers http.Header) ([]*authv1.ResourceAttributes, map[string]
 }
 
 func (nc *NamespaceChecker) Impersonation(
-	cache *cache.Cache,
+	authCache *cache.Cache,
 	cacheExpirationAuthorized,
 	cacheExpirationUnauthorized time.Duration) gin.HandlerFunc {
 
@@ -318,7 +318,7 @@ func (nc *NamespaceChecker) Impersonation(
 		if user_type == "publisher" {
 			c.Next()
 			return
-	}
+		}
 		imp, imperErr := newImpersonatedData(c)
 		if imperErr != nil && !errors.Is(imperErr, ErrNoImpersonationData) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": imperErr})
@@ -346,9 +346,9 @@ func (nc *NamespaceChecker) Impersonation(
 		for _, resourceAttribute := range imp.resourceAttributes {
 			accessReview := &authv1.SubjectAccessReview{
 				Spec: authv1.SubjectAccessReviewSpec{
-					User: requesterInfo.GetName(),
-					UID: requesterInfo.GetUID(),
-					Groups: requesterInfo.GetGroups(),
+					User:               requesterInfo.GetName(),
+					UID:                requesterInfo.GetUID(),
+					Groups:             requesterInfo.GetGroups(),
 					ResourceAttributes: resourceAttribute,
 				},
 			}
@@ -475,8 +475,8 @@ func (nc *NamespaceChecker) checkUserPodAccess(namespace string, requester user.
 	// Create a SubjectAccessReview to check if the user can get pods in the namespace
 	accessReview := &authv1.SubjectAccessReview{
 		Spec: authv1.SubjectAccessReviewSpec{
-			User: requester.GetName(),
-			UID: requester.GetUID(),
+			User:   requester.GetName(),
+			UID:    requester.GetUID(),
 			Groups: requester.GetGroups(),
 			ResourceAttributes: &authv1.ResourceAttributes{
 				Namespace: namespace,

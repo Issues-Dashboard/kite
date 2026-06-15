@@ -13,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const webhookStatusSuccess = "success"
+
 // WebhookHandler handles incoming webhook requests for pipeline events.
 type WebhookHandler struct {
 	issueService services.IssueServiceInterface // Issue service for managing issues
@@ -173,7 +175,7 @@ func (h *WebhookHandler) PipelineFailure(c *gin.Context) {
 	h.logger.WithField("issue_id", issue.ID).Info("Processed pipeline failure webhook")
 
 	c.JSON(http.StatusCreated, gin.H{
-		"status": "success",
+		"status": webhookStatusSuccess,
 		"issue":  issue,
 	})
 }
@@ -227,7 +229,7 @@ func (h *WebhookHandler) PipelineSuccess(c *gin.Context) {
 	}).Info("Pipeline success webhook processed")
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
+		"status":  webhookStatusSuccess,
 		"message": fmt.Sprintf("Resolved %d issue(s) for pipeline %s", resolved, req.PipelineName),
 	})
 }
@@ -257,7 +259,7 @@ func (h *WebhookHandler) MintmakerIssues(c *gin.Context) {
 		return
 	}
 
-	severity := models.SeverityMajor
+	var severity models.Severity
 	switch req.Type {
 	case "error":
 		severity = models.SeverityMajor
@@ -302,7 +304,7 @@ func (h *WebhookHandler) MintmakerIssues(c *gin.Context) {
 	h.logger.WithField("issue_id", issue.ID).Info(fmt.Sprintf("Processed dependency (%s) issue", req.Type))
 
 	c.JSON(http.StatusCreated, gin.H{
-		"status": "success",
+		"status": webhookStatusSuccess,
 		"issue":  issue,
 	})
 }
@@ -368,7 +370,7 @@ func (h *WebhookHandler) ReleaseFailure(c *gin.Context) {
 	h.logger.WithField("issue_id", issue.ID).Info("Processed release failure webhook")
 
 	c.JSON(http.StatusCreated, gin.H{
-		"status": "success",
+		"status": webhookStatusSuccess,
 		"issue":  issue,
 	})
 }
@@ -422,7 +424,7 @@ func (h *WebhookHandler) ReleaseSuccess(c *gin.Context) {
 	}).Info("Release success webhook processed")
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
+		"status":  webhookStatusSuccess,
 		"message": fmt.Sprintf("Resolved %d issue(s) for application %s", resolved, req.Application),
 	})
 }
