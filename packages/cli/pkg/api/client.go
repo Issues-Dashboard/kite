@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
+	neturl "net/url"
 	"time"
 
 	"github.com/konflux-ci/kite/packages/cli/pkg/config"
@@ -32,7 +32,7 @@ func New() *Client {
 // GetIssues retrieves issues with optional filters
 func (c *Client) GetIssues(namespace string, filters map[string]string) ([]models.Issue, error) {
 	// Build query parameters
-	params := url.Values{}
+	params := neturl.Values{}
 	params.Add("namespace", namespace)
 	for key, value := range filters {
 		if value != "" {
@@ -41,12 +41,12 @@ func (c *Client) GetIssues(namespace string, filters map[string]string) ([]model
 	}
 
 	// Make request
-	url := fmt.Sprintf("%s/issues?%s", c.baseURL, params.Encode())
-	resp, err := c.httpClient.Get(url)
+	requestURL := fmt.Sprintf("%s/issues?%s", c.baseURL, params.Encode())
+	resp, err := c.httpClient.Get(requestURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issues: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check response status
 	if resp.StatusCode != http.StatusOK {
@@ -65,16 +65,16 @@ func (c *Client) GetIssues(namespace string, filters map[string]string) ([]model
 // GetIssueDetails retrieves details for a specific issue
 func (c *Client) GetIssueDetails(id, namespace string) (*models.Issue, error) {
 	// Build query parameters
-	params := url.Values{}
+	params := neturl.Values{}
 	params.Add("namespace", namespace)
 
 	// Make request
-	url := fmt.Sprintf("%s/issues/%s?%s", c.baseURL, id, params.Encode())
-	resp, err := c.httpClient.Get(url)
+	requestURL := fmt.Sprintf("%s/issues/%s?%s", c.baseURL, id, params.Encode())
+	resp, err := c.httpClient.Get(requestURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get issue details: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Handle not found and access denied responses
 	if resp.StatusCode == http.StatusNotFound {
@@ -100,12 +100,12 @@ func (c *Client) GetIssueDetails(id, namespace string) (*models.Issue, error) {
 
 // ResolveIssue marks an issue as resolved
 func (c *Client) ResolveIssue(id, namespace string) error {
-	params := url.Values{}
+	params := neturl.Values{}
 	params.Add("namespace", namespace)
 
 	// Create request
-	url := fmt.Sprintf("%s/issues/%s/resolve?%s", c.baseURL, id, params.Encode())
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	requestURL := fmt.Sprintf("%s/issues/%s/resolve?%s", c.baseURL, id, params.Encode())
+	req, err := http.NewRequest(http.MethodPost, requestURL, nil)
 	if err != nil {
 		return c.handleRequestError(err)
 	}
@@ -117,7 +117,7 @@ func (c *Client) ResolveIssue(id, namespace string) error {
 	if err != nil {
 		return c.handleRequestError(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Handle not found and access denied responses
 	if resp.StatusCode == http.StatusNotFound {
@@ -142,7 +142,7 @@ func (c *Client) handleRequestError(err error) error {
 	}
 
 	// Check for timeout
-	if urlErr, ok := err.(*url.Error); ok && urlErr.Timeout() {
+	if urlErr, ok := err.(*neturl.Error); ok && urlErr.Timeout() {
 		return fmt.Errorf("request timed out: please check your network connection and try again")
 	}
 
@@ -178,7 +178,10 @@ func (c *Client) handleAPIError(resp *http.Response) error {
 	case http.StatusTooManyRequests:
 		return fmt.Errorf("rate limit exceeded: please try again later")
 	case http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable:
-		return fmt.Errorf("server error (status %d): the server is currently unavailable, please try again later", resp.StatusCode)
+		return fmt.Errorf(
+			"server error (status %d): the server is currently unavailable, please try again later",
+			resp.StatusCode,
+		)
 	default:
 		// Default error message with body if available
 		if len(body) > 0 {

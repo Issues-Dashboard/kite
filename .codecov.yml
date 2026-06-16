@@ -1,0 +1,61 @@
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "0...100"
+  status:
+    project:
+      default: off
+      backend:
+        target: 20.5%
+        threshold: 0%
+        flags:
+          - backend
+      cli:
+        target: 0%
+        threshold: 0%
+        flags:
+          - cli
+      operator:
+        target: 16.7%
+        threshold: 0%
+        flags:
+          - operator
+    patch:
+      default: off
+      backend:
+        target: 20.5%
+        threshold: 0%
+        flags:
+          - backend
+      cli:
+        target: 0%
+        threshold: 0%
+        flags:
+          - cli
+      operator:
+        target: 16.7%
+        threshold: 0%
+        flags:
+          - operator
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false
+
+flags:
+  backend:
+    paths:
+      - packages/backend/
+    carryforward: true
+  cli:
+    paths:
+      - packages/cli/
+    carryforward: true
+  operator:
+    paths:
+      - packages/operator/
+    carryforward: true

@@ -1,6 +1,9 @@
 # Kite :kite:
 
 ![Go CI Checks](https://github.com/konflux-ci/kite/actions/workflows/go-ci-checks.yaml/badge.svg)
+![Operator package checks](https://github.com/konflux-ci/kite/actions/workflows/operator-package-checks.yml/badge.svg)
+![CLI package checks](https://github.com/konflux-ci/kite/actions/workflows/cli-package-checks.yml/badge.svg)
+[![codecov](https://codecov.io/gh/konflux-ci/kite/branch/main/graph/badge.svg)](https://codecov.io/gh/konflux-ci/kite)
 
 :construction: **Proof of Concept** - APIs and core functionality may change. See [Status](#status) below.
 
@@ -81,6 +84,23 @@ To work with this project, ensure you have the following installed:
 - [Make](https://www.gnu.org/software/make/)
 - [Minikube](https://minikube.sigs.k8s.io/docs/start/) – for local development
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) – for local development
+
+### Development commands
+
+Each Go package supports linting and coverage through its `Makefile`:
+
+```bash
+# Backend
+cd packages/backend && make lint test coverage
+
+# CLI
+cd packages/cli && make lint test coverage
+
+# Operator
+cd packages/operator && make lint test coverage
+```
+
+Lint configuration lives in `configs/golangci.yml` (backend and CLI) and `packages/operator/.golangci.yml` (operator). Coverage reports are uploaded to [Codecov](https://codecov.io/gh/konflux-ci/kite) on pull requests.
 
 ---
 

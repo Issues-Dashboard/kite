@@ -8,11 +8,16 @@ import (
 	"github.com/konflux-ci/kite/packages/cli/pkg/api"
 	"github.com/konflux-ci/kite/packages/cli/pkg/config"
 	"github.com/konflux-ci/kite/packages/cli/pkg/formatter"
+	"github.com/konflux-ci/kite/packages/cli/pkg/models"
 	"github.com/spf13/cobra"
 )
 
+const (
+	outputFormatJSON = "json"
+	outputFormatYAML = "yaml"
+)
+
 var (
-	cfgFile      string
 	namespace    string
 	issueType    string
 	severity     string
@@ -20,7 +25,6 @@ var (
 	resourceType string
 	limit        int
 	issueID      string
-	term         string
 	outputFormat string
 	unresolved   bool
 )
@@ -78,14 +82,7 @@ var listCmd = &cobra.Command{
 			return nil
 		}
 
-		// Print issues based on output format
-		if outputFormat == "json" {
-			formatter.PrintIssuesJSON(issues)
-		} else if outputFormat == "yaml" {
-			formatter.PrintIssuesYAML(issues)
-		} else {
-			formatter.PrintIssuesTable(issues)
-		}
+		printIssues(issues)
 
 		return nil
 	},
@@ -121,14 +118,7 @@ var detailsCmd = &cobra.Command{
 			return err
 		}
 
-		// Print issues based on output format
-		if outputFormat == "json" {
-			formatter.PrintIssuesDetailsJSON(issue)
-		} else if outputFormat == "yaml" {
-			formatter.PrintIssueDetailsYAML(issue)
-		} else {
-			formatter.PrintIssueDetails(issue)
-		}
+		printIssueDetails(issue)
 
 		return nil
 	},
@@ -216,14 +206,7 @@ var searchCmd = &cobra.Command{
 			return nil
 		}
 
-		// Print issues based on output format
-		if outputFormat == "json" {
-			formatter.PrintIssuesJSON(issues)
-		} else if outputFormat == "yaml" {
-			formatter.PrintIssuesYAML(issues)
-		} else {
-			formatter.PrintIssuesTable(issues)
-		}
+		printIssues(issues)
 
 		return nil
 	},
@@ -299,11 +282,15 @@ func init() {
 
 	// Add details command flags
 	detailsCmd.Flags().StringVarP(&issueID, "id", "i", "", "Issue ID")
-	detailsCmd.MarkFlagRequired("id")
+	if err := detailsCmd.MarkFlagRequired("id"); err != nil {
+		panic(err)
+	}
 
 	// Add resolve command flags
 	resolveCmd.Flags().StringVarP(&issueID, "id", "i", "", "Issue ID")
-	resolveCmd.MarkFlagRequired("id")
+	if err := resolveCmd.MarkFlagRequired("id"); err != nil {
+		panic(err)
+	}
 
 	// Add search command flags
 	searchCmd.Flags().StringVarP(&issueType, "type", "t", "", "Filter by issue type")
@@ -328,4 +315,26 @@ func getCurrentKubeNamespace() (string, error) {
 	}
 
 	return namespace, nil
+}
+
+func printIssues(issues []models.Issue) {
+	switch outputFormat {
+	case outputFormatJSON:
+		formatter.PrintIssuesJSON(issues)
+	case outputFormatYAML:
+		formatter.PrintIssuesYAML(issues)
+	default:
+		formatter.PrintIssuesTable(issues)
+	}
+}
+
+func printIssueDetails(issue *models.Issue) {
+	switch outputFormat {
+	case outputFormatJSON:
+		formatter.PrintIssuesDetailsJSON(issue)
+	case outputFormatYAML:
+		formatter.PrintIssueDetailsYAML(issue)
+	default:
+		formatter.PrintIssueDetails(issue)
+	}
 }

@@ -21,7 +21,7 @@ func SetupRouter(db *gorm.DB, logger *logrus.Logger) (*gin.Engine, error) {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	cache := cache.New()
+	appCache := cache.New()
 	router := gin.New()
 
 	// Setup middleware
@@ -48,15 +48,15 @@ func SetupRouter(db *gorm.DB, logger *logrus.Logger) (*gin.Engine, error) {
 	v1 := router.Group("/api/v1")
 
 	// Add middleware for authentication in non development environment
-	kiteEnv := kiteConf.GetEnvOrDefault("KITE_PROJECT_ENV", "development")
-	if kiteEnv != "development" {
-		v1.Use(namespaceChecker.Authentication(cache, 10 * time.Second, 10 * time.Second))
-		v1.Use(namespaceChecker.Impersonation(cache, 10 * time.Second, 10 * time.Second))
+	kiteEnv := kiteConf.GetEnvOrDefault("KITE_PROJECT_ENV", kiteConf.EnvDevelopment)
+	if kiteEnv != kiteConf.EnvDevelopment {
+		v1.Use(namespaceChecker.Authentication(appCache, 10*time.Second, 10*time.Second))
+		v1.Use(namespaceChecker.Impersonation(appCache, 10*time.Second, 10*time.Second))
 	}
 
 	// Issues routes with namespace checking
 	issuesGroup := v1.Group("/issues")
-	if namespaceChecker != nil && kiteEnv != "development" {
+	if namespaceChecker != nil && kiteEnv != kiteConf.EnvDevelopment {
 		issuesGroup.Use(namespaceChecker.CheckNamespacessAccess())
 	}
 	{
@@ -72,7 +72,7 @@ func SetupRouter(db *gorm.DB, logger *logrus.Logger) (*gin.Engine, error) {
 
 	// Webhook routes with namespace checking
 	webhooksGroup := v1.Group("/webhooks")
-	if namespaceChecker != nil && kiteEnv != "development" {
+	if namespaceChecker != nil && kiteEnv != kiteConf.EnvDevelopment {
 		webhooksGroup.Use(namespaceChecker.CheckNamespacessAccess())
 	}
 	{

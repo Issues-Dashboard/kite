@@ -1,0 +1,33 @@
+name: Lint
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: true
+        type: string
+      golangci-config:
+        required: false
+        type: string
+        default: configs/golangci.yml
+
+jobs:
+  lint:
+    name: Run on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ inputs.workdir }}/go.mod
+          cache-dependency-path: ${{ inputs.workdir }}/go.mod
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1.0
+          working-directory: ${{ inputs.workdir }}
+          args: --config=${{ github.workspace }}/${{ inputs.golangci-config }}

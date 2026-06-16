@@ -1,13 +1,14 @@
-# NOTE: This workflow came from the operator-sdk
 name: Tests
 
 on:
   workflow_call:
     inputs:
       workdir:
-        required: false
+        required: true
         type: string
-        default: packages/operator
+      coverage-flag:
+        required: true
+        type: string
 
 jobs:
   test:
@@ -23,7 +24,7 @@ jobs:
           go-version-file: ${{ inputs.workdir }}/go.mod
           cache-dependency-path: ${{ inputs.workdir }}/go.mod
 
-      - name: Running Tests
+      - name: Run tests
         working-directory: ${{ inputs.workdir }}
         run: |
           go mod tidy
@@ -34,5 +35,5 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ${{ inputs.workdir }}/cover.out
-          flags: operator
+          flags: ${{ inputs.coverage-flag }}
           fail_ci_if_error: false

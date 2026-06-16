@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/konflux-ci/kite/packages/cli/pkg/models"
 	"github.com/fatih/color"
+	"github.com/konflux-ci/kite/packages/cli/pkg/models"
 	"github.com/olekukonko/tablewriter"
 	"gopkg.in/yaml.v3"
 )
@@ -21,9 +21,7 @@ var (
 	infoColor     = color.New(color.FgGreen).SprintFunc()
 	boldColor     = color.New(color.Bold).SprintFunc()
 	successColor  = color.New(color.FgGreen).SprintFunc()
-	errorColor    = color.New(color.FgRed).SprintFunc()
 	warningColor  = color.New(color.FgYellow).SprintFunc()
-	neutralColor  = color.New(color.FgCyan).SprintFunc()
 )
 
 // GetSeverityColor returns the colored string for a severity level

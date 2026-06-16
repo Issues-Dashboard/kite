@@ -1,0 +1,51 @@
+name: CLI package checks
+
+on:
+  pull_request:
+    branches: ["**"]
+    paths:
+      - 'packages/cli/**'
+      - 'configs/golangci.yml'
+      - '.codecov.yml'
+
+jobs:
+  lint:
+    uses: ./.github/workflows/go-lint.yml
+    with:
+      workdir: packages/cli
+      golangci-config: configs/golangci.yml
+
+  test:
+    uses: ./.github/workflows/go-test.yml
+    with:
+      workdir: packages/cli
+      coverage-flag: cli
+
+  build:
+    name: Build CLI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cli
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/cli/go.mod
+          cache-dependency-path: packages/cli/go.mod
+
+      - name: Verify go mod tidy
+        run: |
+          go mod tidy
+          result="$(git diff --exit-code go.mod go.sum)"
+          if [ -n "$result" ]; then
+            echo "Please run go mod tidy and commit changes"
+            echo "$result"
+            exit 1
+          fi
+
+      - name: Run go build
+        run: go build ./...
