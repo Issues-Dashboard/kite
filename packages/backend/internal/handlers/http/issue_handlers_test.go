@@ -363,4 +363,65 @@ func TestIssueHandler_ResolveIssue(t *testing.T) {
 	if response.State != models.IssueStateResolved {
 		t.Errorf("expeted state 'RESOLVED', got '%s'", response.State)
 	}
+
+	if mockService.lastUpdateRequest.ResolvedByID != "" {
+		t.Errorf("expected empty resolvedById when user header is missing, got %q", mockService.lastUpdateRequest.ResolvedByID)
+	}
+}
+
+func TestIssueHandler_ResolveIssue_WithUserHeader(t *testing.T) {
+	userID := "f67079c2-ce41-4bf9-bfb5-fbd9dbc1cf3c"
+	originalIssue := &models.Issue{
+		ID:        "resolve-test-user",
+		Title:     "Issue to Resolve",
+		State:     models.IssueStateActive,
+		Namespace: "team-resolved",
+	}
+
+	resolvedIssue := &models.Issue{
+		ID:           "resolve-test-user",
+		Title:        "Issue to Resolve",
+		State:        models.IssueStateResolved,
+		Namespace:    "team-resolved",
+		ResolvedByID: userID,
+	}
+
+	mockService := &MockIssueService{
+		findIssueByIDResult: originalIssue,
+		updateIssueResult:   resolvedIssue,
+	}
+
+	handler := setupTestIssueHandler(mockService)
+	router := setupTestIssueRouter(handler)
+
+	req, err := net_http.NewRequest("POST", "/api/v1/issues/resolve-test-user/resolve", nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	req.Header.Set("user", userID)
+
+	w := net_httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != net_http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	if mockService.lastUpdateRequest.State != models.IssueStateResolved {
+		t.Errorf("expected state RESOLVED in update request, got %q", mockService.lastUpdateRequest.State)
+	}
+
+	if mockService.lastUpdateRequest.ResolvedByID != userID {
+		t.Errorf("expected resolvedById %q in update request, got %q", userID, mockService.lastUpdateRequest.ResolvedByID)
+	}
+
+	var response models.Issue
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	if err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if response.ResolvedByID != userID {
+		t.Errorf("expected resolvedById %q in response, got %q", userID, response.ResolvedByID)
+	}
 }

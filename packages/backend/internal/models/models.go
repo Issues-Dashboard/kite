@@ -36,15 +36,16 @@ const (
 
 // Issue represents an issue in the cluster
 type Issue struct {
-	ID          string     `gorm:"type:uuid;primaryKey;" json:"id"`
-	Title       string     `gorm:"not null" json:"title"`
-	Description string     `gorm:"not null" json:"description"`
-	Severity    Severity   `gorm:"type:varchar(20);not null" json:"severity"`
-	IssueType   IssueType  `gorm:"type:varchar(20);not null" json:"issueType"`
-	State       IssueState `gorm:"type:varchar(20);default:ACTIVE" json:"state"`
-	DetectedAt  time.Time  `gorm:"not null" json:"detectedAt"`
-	ResolvedAt  *time.Time `json:"resolvedAt"`
-	Namespace   string     `gorm:"not null" json:"namespace"`
+	ID           string     `gorm:"type:uuid;primaryKey;" json:"id"`
+	Title        string     `gorm:"not null" json:"title"`
+	Description  string     `gorm:"not null" json:"description"`
+	Severity     Severity   `gorm:"type:varchar(20);not null" json:"severity"`
+	IssueType    IssueType  `gorm:"type:varchar(20);not null" json:"issueType"`
+	State        IssueState `gorm:"type:varchar(20);default:ACTIVE" json:"state"`
+	DetectedAt   time.Time  `gorm:"not null" json:"detectedAt"`
+	ResolvedAt   *time.Time `json:"resolvedAt"`
+	ResolvedByID string     `json:"resolvedById"`
+	Namespace    string     `gorm:"not null" json:"namespace"`
 
 	// Foreign key to IssueScope
 	ScopeID string     `gorm:"type:uuid;not null;unique" json:"scopeId"`

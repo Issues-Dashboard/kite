@@ -251,6 +251,46 @@ func TestIssueRepository_Update(t *testing.T) {
 	}
 }
 
+func TestIssueRepository_Update_ResolvedByID(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	req := createTestIssue("Resolvable Issue", "test-namespace")
+	issue, err := repo.Create(ctx, req)
+	if err != nil {
+		t.Fatalf("unexpected error creating issue: %v", err)
+	}
+
+	resolvedByID := "f67079c2-ce41-4bf9-bfb5-fbd9dbc1cf3c"
+	updatedIssue, err := repo.Update(ctx, issue.ID, dto.UpdateIssueRequest{
+		State:        models.IssueStateResolved,
+		ResolvedByID: resolvedByID,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error updating issue: %v", err)
+	}
+
+	if updatedIssue.State != models.IssueStateResolved {
+		t.Errorf("expected state RESOLVED, got %q", updatedIssue.State)
+	}
+
+	if updatedIssue.ResolvedByID != resolvedByID {
+		t.Errorf("expected resolvedById %q, got %q", resolvedByID, updatedIssue.ResolvedByID)
+	}
+
+	if updatedIssue.ResolvedAt == nil {
+		t.Fatal("expected resolvedAt to be set when resolving an issue")
+	}
+
+	reloadedIssue, err := repo.FindByID(ctx, issue.ID)
+	if err != nil {
+		t.Fatalf("unexpected error reloading issue: %v", err)
+	}
+
+	if reloadedIssue.ResolvedByID != resolvedByID {
+		t.Errorf("expected persisted resolvedById %q, got %q", resolvedByID, reloadedIssue.ResolvedByID)
+	}
+}
+
 func TestIssueRepository_Delete(t *testing.T) {
 	ctx, db, repo := setupTestScenario(t, SetupOptions{})
 
