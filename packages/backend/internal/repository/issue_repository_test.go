@@ -34,6 +34,10 @@ func setupTestScenario(t *testing.T, options SetupOptions) (context.Context, *go
 
 // createTestIssue is a helper function to create test issues
 func createTestIssue(title, namespace string) dto.CreateIssueRequest {
+	return createTestIssueWithScope(title, namespace, "component", "test-component")
+}
+
+func createTestIssueWithScope(title, namespace, resourceType, resourceName string) dto.CreateIssueRequest {
 	return dto.CreateIssueRequest{
 		Title:       title,
 		Description: "Test description",
@@ -41,8 +45,8 @@ func createTestIssue(title, namespace string) dto.CreateIssueRequest {
 		IssueType:   models.IssueTypeBuild,
 		Namespace:   namespace,
 		Scope: dto.ScopeReqBody{
-			ResourceType:      "component",
-			ResourceName:      "test-component",
+			ResourceType:      resourceType,
+			ResourceName:      resourceName,
 			ResourceNamespace: namespace,
 		},
 		Links: []dto.CreateLinkRequest{
@@ -401,5 +405,488 @@ func TestIssueRepository_CreateOrUpdate_NoDuplicates(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
+	}
+}
+
+func TestIssueRepository_FindDuplicate_NoDuplicate(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	foundIssue, err := repo.FindDuplicate(ctx, createTestIssue("Fresh Issue", "test-namespace"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if foundIssue != nil {
+		t.Fatalf("expected no duplicate, got issue %s", foundIssue.ID)
+	}
+}
+
+func TestIssueRepository_Create_UpdatesDuplicate(t *testing.T) {
+	ctx, db, repo := setupTestScenario(t, SetupOptions{})
+
+	req := createTestIssue("Duplicate Create", "test-namespace")
+	original, err := repo.Create(ctx, req)
+	if err != nil {
+		t.Fatalf("unexpected error creating issue: %v", err)
+	}
+
+	updatedReq := createTestIssue("Duplicate Create Updated", "test-namespace")
+	updatedReq.Description = "Updated description"
+	updatedReq.Severity = models.SeverityCritical
+
+	updated, err := repo.Create(ctx, updatedReq)
+	if err != nil {
+		t.Fatalf("unexpected error updating duplicate: %v", err)
+	}
+
+	if updated.ID != original.ID {
+		t.Errorf("expected same issue ID %s, got %s", original.ID, updated.ID)
+	}
+
+	if updated.Title != updatedReq.Title {
+		t.Errorf("expected title %q, got %q", updatedReq.Title, updated.Title)
+	}
+
+	if updated.Severity != models.SeverityCritical {
+		t.Errorf("expected severity %q, got %q", models.SeverityCritical, updated.Severity)
+	}
+
+	var issueCount int64
+	db.Model(&models.Issue{}).Count(&issueCount)
+	if issueCount != 1 {
+		t.Errorf("expected 1 issue in DB, got %d", issueCount)
+	}
+}
+
+func TestIssueRepository_CreateOrUpdate_UpdatesExisting(t *testing.T) {
+	ctx, db, repo := setupTestScenario(t, SetupOptions{})
+
+	req := createTestIssue("CreateOrUpdate Existing", "test-namespace")
+	original, err := repo.Create(ctx, req)
+	if err != nil {
+		t.Fatalf("unexpected error creating issue: %v", err)
+	}
+
+	req.Title = "CreateOrUpdate Updated"
+	updated, err := repo.CreateOrUpdate(ctx, req)
+	if err != nil {
+		t.Fatalf("unexpected error on create or update: %v", err)
+	}
+
+	if updated.ID != original.ID {
+		t.Errorf("expected same issue ID %s, got %s", original.ID, updated.ID)
+	}
+
+	if updated.Title != "CreateOrUpdate Updated" {
+		t.Errorf("expected updated title, got %q", updated.Title)
+	}
+
+	var issueCount int64
+	db.Model(&models.Issue{}).Count(&issueCount)
+	if issueCount != 1 {
+		t.Errorf("expected 1 issue in DB, got %d", issueCount)
+	}
+}
+
+func TestIssueRepository_Create_DefaultScopeNamespaceAndState(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	req := dto.CreateIssueRequest{
+		Title:       "Defaulted Issue",
+		Description: "Test description",
+		Severity:    models.SeverityMajor,
+		IssueType:   models.IssueTypeBuild,
+		Namespace:   "test-namespace",
+		Scope: dto.ScopeReqBody{
+			ResourceType: "component",
+			ResourceName: "fallback-component",
+		},
+	}
+
+	issue, err := repo.Create(ctx, req)
+	if err != nil {
+		t.Fatalf("unexpected error creating issue: %v", err)
+	}
+
+	if issue.State != models.IssueStateActive {
+		t.Errorf("expected default state ACTIVE, got %q", issue.State)
+	}
+
+	if issue.Scope.ResourceNamespace != "test-namespace" {
+		t.Errorf("expected scope namespace to fall back to issue namespace, got %q", issue.Scope.ResourceNamespace)
+	}
+}
+
+func TestIssueRepository_FindAll_AdditionalFilters(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	buildIssue := createTestIssue("Build failure in pipeline", "team-alpha")
+	testIssue := dto.CreateIssueRequest{
+		Title:       "Unit test regression",
+		Description: "Regression in auth package",
+		Severity:    models.SeverityCritical,
+		IssueType:   models.IssueTypeTest,
+		Namespace:   "team-alpha",
+		Scope: dto.ScopeReqBody{
+			ResourceType:      "pipelinerun",
+			ResourceName:      "pipeline-xyz",
+			ResourceNamespace: "team-alpha",
+		},
+	}
+
+	for _, req := range []dto.CreateIssueRequest{buildIssue, testIssue} {
+		if _, err := repo.Create(ctx, req); err != nil {
+			t.Fatalf("failed to create test issue: %v", err)
+		}
+	}
+
+	severity := models.SeverityCritical
+	issueType := models.IssueTypeTest
+	state := models.IssueStateActive
+
+	tests := []struct {
+		name          string
+		filters       IssueQueryFilters
+		expectedTotal int64
+		expectedCount int
+	}{
+		{
+			name: "severity filter",
+			filters: IssueQueryFilters{
+				Namespace: "team-alpha",
+				Severity:  &severity,
+				Limit:     10,
+			},
+			expectedTotal: 1,
+			expectedCount: 1,
+		},
+		{
+			name: "issue type filter",
+			filters: IssueQueryFilters{
+				Namespace: "team-alpha",
+				IssueType: &issueType,
+				Limit:     10,
+			},
+			expectedTotal: 1,
+			expectedCount: 1,
+		},
+		{
+			name: "state filter",
+			filters: IssueQueryFilters{
+				Namespace: "team-alpha",
+				State:     &state,
+				Limit:     10,
+			},
+			expectedTotal: 2,
+			expectedCount: 2,
+		},
+		{
+			name: "resource filters",
+			filters: IssueQueryFilters{
+				Namespace:    "team-alpha",
+				ResourceType: "pipelinerun",
+				ResourceName: "pipeline-xyz",
+				Limit:        10,
+			},
+			expectedTotal: 1,
+			expectedCount: 1,
+		},
+		{
+			name: "search filter",
+			filters: IssueQueryFilters{
+				Namespace: "team-alpha",
+				Search:    "regression",
+				Limit:     10,
+			},
+			expectedTotal: 1,
+			expectedCount: 1,
+		},
+		{
+			name: "default limit",
+			filters: IssueQueryFilters{
+				Namespace: "team-alpha",
+			},
+			expectedTotal: 2,
+			expectedCount: 2,
+		},
+		{
+			name: "pagination",
+			filters: IssueQueryFilters{
+				Namespace: "team-alpha",
+				Limit:     1,
+				Offset:    1,
+			},
+			expectedTotal: 2,
+			expectedCount: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			foundIssues, total, err := repo.FindAll(ctx, tt.filters)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if total != tt.expectedTotal {
+				t.Errorf("expected total %d, got %d", tt.expectedTotal, total)
+			}
+
+			if len(foundIssues) != tt.expectedCount {
+				t.Errorf("expected %d issues, got %d", tt.expectedCount, len(foundIssues))
+			}
+		})
+	}
+}
+
+func TestIssueRepository_Update_NotFound(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	_, err := repo.Update(ctx, "missing-issue-id", dto.UpdateIssueRequest{
+		Title: "Should not update",
+	})
+	if err == nil {
+		t.Fatal("expected error for missing issue")
+	}
+}
+
+func TestIssueRepository_Update_LinksAndScope(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	issue, err := repo.Create(ctx, createTestIssue("Update Fields", "test-namespace"))
+	if err != nil {
+		t.Fatalf("unexpected error creating issue: %v", err)
+	}
+
+	updated, err := repo.Update(ctx, issue.ID, dto.UpdateIssueRequest{
+		Description: "Updated description",
+		Severity:    models.SeverityMinor,
+		IssueType:   models.IssueTypeTest,
+		Namespace:   "updated-namespace",
+		Links: []dto.CreateLinkRequest{
+			{Title: "New Link", URL: "https://example.com/new"},
+		},
+		Scope: dto.ScopeReqBodyOptional{
+			ResourceType:      "pipelinerun",
+			ResourceName:      "pipeline-updated",
+			ResourceNamespace: "updated-namespace",
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error updating issue: %v", err)
+	}
+
+	if updated.Description != "Updated description" {
+		t.Errorf("expected updated description, got %q", updated.Description)
+	}
+
+	if updated.Severity != models.SeverityMinor {
+		t.Errorf("expected severity minor, got %q", updated.Severity)
+	}
+
+	if updated.IssueType != models.IssueTypeTest {
+		t.Errorf("expected issue type test, got %q", updated.IssueType)
+	}
+
+	if updated.Namespace != "updated-namespace" {
+		t.Errorf("expected namespace updated-namespace, got %q", updated.Namespace)
+	}
+
+	if len(updated.Links) != 1 || updated.Links[0].Title != "New Link" {
+		t.Fatalf("expected replaced links, got %+v", updated.Links)
+	}
+
+	if updated.Scope.ResourceType != "pipelinerun" {
+		t.Errorf("expected scope resource type pipelinerun, got %q", updated.Scope.ResourceType)
+	}
+
+	if updated.Scope.ResourceName != "pipeline-updated" {
+		t.Errorf("expected scope resource name pipeline-updated, got %q", updated.Scope.ResourceName)
+	}
+}
+
+func TestIssueRepository_Update_ResolvedAt(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	issue, err := repo.Create(ctx, createTestIssue("Resolved At Update", "test-namespace"))
+	if err != nil {
+		t.Fatalf("unexpected error creating issue: %v", err)
+	}
+
+	_, err = repo.Update(ctx, issue.ID, dto.UpdateIssueRequest{
+		State: models.IssueStateResolved,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error resolving issue: %v", err)
+	}
+
+	resolvedAt := time.Date(2025, 4, 30, 13, 40, 15, 0, time.UTC)
+	updated, err := repo.Update(ctx, issue.ID, dto.UpdateIssueRequest{
+		State:        models.IssueStateResolved,
+		ResolvedAt:   resolvedAt,
+		ResolvedByID: "resolver-user-id",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error updating issue: %v", err)
+	}
+
+	if updated.ResolvedAt == nil || !updated.ResolvedAt.Equal(resolvedAt) {
+		t.Errorf("expected resolvedAt %v, got %v", resolvedAt, updated.ResolvedAt)
+	}
+
+	if updated.ResolvedByID != "resolver-user-id" {
+		t.Errorf("expected resolvedById resolver-user-id, got %q", updated.ResolvedByID)
+	}
+}
+
+func TestIssueRepository_Delete_NotFound(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	err := repo.Delete(ctx, "missing-issue-id")
+	if err == nil {
+		t.Fatal("expected error for missing issue")
+	}
+}
+
+func TestIssueRepository_Delete_WithRelatedIssues(t *testing.T) {
+	ctx, db, repo := setupTestScenario(t, SetupOptions{})
+
+	source, err := repo.Create(ctx, createTestIssue("Source Issue", "test-namespace"))
+	if err != nil {
+		t.Fatalf("unexpected error creating source issue: %v", err)
+	}
+
+	target, err := repo.Create(ctx, createTestIssueWithScope("Target Issue", "test-namespace", "component", "other-component"))
+	if err != nil {
+		t.Fatalf("unexpected error creating target issue: %v", err)
+	}
+
+	if err := repo.AddRelatedIssue(ctx, source.ID, target.ID); err != nil {
+		t.Fatalf("unexpected error adding related issue: %v", err)
+	}
+
+	if err := repo.Delete(ctx, source.ID); err != nil {
+		t.Fatalf("unexpected error deleting issue: %v", err)
+	}
+
+	var relatedCount int64
+	db.Model(&models.RelatedIssue{}).Count(&relatedCount)
+	if relatedCount != 0 {
+		t.Errorf("expected related issues to be deleted, got %d", relatedCount)
+	}
+}
+
+func TestIssueRepository_ResolveByScope(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	req := createTestIssueWithScope("Pipeline failure", "team-alpha", "pipelinerun", "pipeline-xyz")
+	issue, err := repo.Create(ctx, req)
+	if err != nil {
+		t.Fatalf("unexpected error creating issue: %v", err)
+	}
+
+	count, err := repo.ResolveByScope(ctx, "pipelinerun", "pipeline-xyz", "team-alpha")
+	if err != nil {
+		t.Fatalf("unexpected error resolving by scope: %v", err)
+	}
+
+	if count != 1 {
+		t.Errorf("expected 1 resolved issue, got %d", count)
+	}
+
+	resolved, err := repo.FindByID(ctx, issue.ID)
+	if err != nil {
+		t.Fatalf("unexpected error reloading issue: %v", err)
+	}
+
+	if resolved.State != models.IssueStateResolved {
+		t.Errorf("expected state RESOLVED, got %q", resolved.State)
+	}
+
+	if resolved.ResolvedAt == nil {
+		t.Fatal("expected resolvedAt to be set")
+	}
+
+	count, err = repo.ResolveByScope(ctx, "pipelinerun", "missing-pipeline", "team-alpha")
+	if err != nil {
+		t.Fatalf("unexpected error resolving empty scope: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("expected 0 resolved issues for missing scope, got %d", count)
+	}
+}
+
+func TestIssueRepository_AddRelatedIssue(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	source, err := repo.Create(ctx, createTestIssue("Related Source", "test-namespace"))
+	if err != nil {
+		t.Fatalf("unexpected error creating source issue: %v", err)
+	}
+
+	target, err := repo.Create(ctx, createTestIssueWithScope("Related Target", "test-namespace", "component", "related-target"))
+	if err != nil {
+		t.Fatalf("unexpected error creating target issue: %v", err)
+	}
+
+	if err := repo.AddRelatedIssue(ctx, source.ID, target.ID); err != nil {
+		t.Fatalf("unexpected error adding related issue: %v", err)
+	}
+
+	reloaded, err := repo.FindByID(ctx, source.ID)
+	if err != nil {
+		t.Fatalf("unexpected error reloading source issue: %v", err)
+	}
+
+	if len(reloaded.RelatedFrom) != 1 {
+		t.Fatalf("expected 1 related issue, got %d", len(reloaded.RelatedFrom))
+	}
+
+	if reloaded.RelatedFrom[0].TargetID != target.ID {
+		t.Errorf("expected target ID %s, got %s", target.ID, reloaded.RelatedFrom[0].TargetID)
+	}
+
+	if err := repo.AddRelatedIssue(ctx, source.ID, target.ID); err == nil {
+		t.Fatal("expected error when adding duplicate relationship")
+	}
+
+	if err := repo.AddRelatedIssue(ctx, source.ID, "missing-issue"); err == nil {
+		t.Fatal("expected error when target issue is missing")
+	}
+}
+
+func TestIssueRepository_RemoveRelatedIssue(t *testing.T) {
+	ctx, _, repo := setupTestScenario(t, SetupOptions{})
+
+	source, err := repo.Create(ctx, createTestIssue("Remove Source", "test-namespace"))
+	if err != nil {
+		t.Fatalf("unexpected error creating source issue: %v", err)
+	}
+
+	target, err := repo.Create(ctx, createTestIssueWithScope("Remove Target", "test-namespace", "component", "remove-target"))
+	if err != nil {
+		t.Fatalf("unexpected error creating target issue: %v", err)
+	}
+
+	if err := repo.AddRelatedIssue(ctx, source.ID, target.ID); err != nil {
+		t.Fatalf("unexpected error adding related issue: %v", err)
+	}
+
+	if err := repo.RemoveRelatedIssue(ctx, source.ID, target.ID); err != nil {
+		t.Fatalf("unexpected error removing related issue: %v", err)
+	}
+
+	reloaded, err := repo.FindByID(ctx, source.ID)
+	if err != nil {
+		t.Fatalf("unexpected error reloading source issue: %v", err)
+	}
+
+	if len(reloaded.RelatedFrom) != 0 {
+		t.Errorf("expected related issues to be removed, got %d", len(reloaded.RelatedFrom))
+	}
+
+	if err := repo.RemoveRelatedIssue(ctx, source.ID, target.ID); err == nil {
+		t.Fatal("expected error when relationship does not exist")
 	}
 }
