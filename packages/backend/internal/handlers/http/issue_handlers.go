@@ -14,6 +14,7 @@ import (
 	"github.com/konflux-ci/kite/internal/repository"
 	"github.com/konflux-ci/kite/internal/services"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apiserver/pkg/authentication/user"
 )
 
 type IssueHandler struct {
@@ -202,7 +203,6 @@ func (h *IssueHandler) DeleteIssue(c *gin.Context) {
 func (h *IssueHandler) ResolveIssue(c *gin.Context) {
 	id := c.Param("id")
 	namespace := c.Query("namespace")
-	user := c.GetHeader("user")
 
 	existingIssue, err := h.issueService.FindIssueByID(c.Request.Context(), id)
 	if err != nil {
@@ -229,9 +229,12 @@ func (h *IssueHandler) ResolveIssue(c *gin.Context) {
 		ResolvedAt: now,
 	}
 
-	if user != "" {
-		h.logger.WithField("user", user).Info("User found")
-		req.ResolvedByID = user
+	requester, ok := c.Get("user")
+	if ok {
+		requesterInfo, okCast := requester.(*user.DefaultInfo)
+		if okCast {
+			req.ResolvedByID = requesterInfo.GetUID()
+		}
 	}
 
 	updatedIssue, err := h.issueService.UpdateIssue(c.Request.Context(), id, req)

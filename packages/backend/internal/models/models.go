@@ -44,7 +44,7 @@ type Issue struct {
 	State        IssueState `gorm:"type:varchar(20);default:ACTIVE" json:"state"`
 	DetectedAt   time.Time  `gorm:"not null" json:"detectedAt"`
 	ResolvedAt   *time.Time `json:"resolvedAt"`
-	ResolvedByID string     `json:"resolvedById"`
+	ResolvedByID string     `gorm:"type:varchar(40);default:NULL" json:"resolvedById"`
 	Namespace    string     `gorm:"not null" json:"namespace"`
 
 	// Foreign key to IssueScope
