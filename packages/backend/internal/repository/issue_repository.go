@@ -494,8 +494,10 @@ func (i *issueRepository) updateIssueInTx(tx *gorm.DB, existingIssue *models.Iss
 		updates["state"] = req.GetState()
 		if req.GetState() == models.IssueStateResolved && existingIssue.State != models.IssueStateResolved {
 			updates["resolved_at"] = time.Now()
+			updates["resolved_by_id"] = req.GetResolvedByID()
 		} else if ra := req.GetResolvedAt(); !ra.IsZero() {
 			updates["resolved_at"] = ra
+			updates["resolved_by_id"] = req.GetResolvedByID()
 		}
 	}
 

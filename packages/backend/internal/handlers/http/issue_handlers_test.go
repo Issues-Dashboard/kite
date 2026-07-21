@@ -12,6 +12,7 @@ import (
 	"github.com/konflux-ci/kite/internal/handlers/dto"
 	"github.com/konflux-ci/kite/internal/models"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apiserver/pkg/authentication/user"
 )
 
 // setTestIssueHandler creates a test handler with mock service
@@ -21,14 +22,15 @@ func setupTestIssueHandler(mockService *MockIssueService) *IssueHandler {
 	return NewIssueHandler(mockService, logger)
 }
 
-// setupTestIssueRouter creates a test router with HTTP tests
-func setupTestIssueRouter(handler *IssueHandler) *gin.Engine {
+// setupTestIssueRouter creates a test router with HTTP tests.
+// Optional middleware is applied to all /api/v1 routes (e.g. to inject an authenticated user).
+func setupTestIssueRouter(handler *IssueHandler, middlewares ...gin.HandlerFunc) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
 
 	// Add routes
-	v1 := router.Group("/api/v1")
+	v1 := router.Group("/api/v1", middlewares...)
 	{
 		v1.GET("/issues", handler.GetIssues)
 		v1.POST("/issues", handler.CreateIssue)
@@ -39,6 +41,13 @@ func setupTestIssueRouter(handler *IssueHandler) *gin.Engine {
 	}
 
 	return router
+}
+
+func withAuthenticatedUser(uid string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("user", &user.DefaultInfo{UID: uid})
+		c.Next()
+	}
 }
 
 func TestIssueHandler_GetIssues(t *testing.T) {
@@ -362,5 +371,65 @@ func TestIssueHandler_ResolveIssue(t *testing.T) {
 
 	if response.State != models.IssueStateResolved {
 		t.Errorf("expeted state 'RESOLVED', got '%s'", response.State)
+	}
+
+	if mockService.lastUpdateRequest.ResolvedByID != "" {
+		t.Errorf("expected empty resolvedById when user is not in context, got %q", mockService.lastUpdateRequest.ResolvedByID)
+	}
+}
+
+func TestIssueHandler_ResolveIssue_WithAuthenticatedUser(t *testing.T) {
+	userID := "f67079c2-ce41-4bf9-bfb5-fbd9dbc1cf3c"
+	originalIssue := &models.Issue{
+		ID:        "resolve-test-user",
+		Title:     "Issue to Resolve",
+		State:     models.IssueStateActive,
+		Namespace: "team-resolved",
+	}
+
+	resolvedIssue := &models.Issue{
+		ID:           "resolve-test-user",
+		Title:        "Issue to Resolve",
+		State:        models.IssueStateResolved,
+		Namespace:    "team-resolved",
+		ResolvedByID: userID,
+	}
+
+	mockService := &MockIssueService{
+		findIssueByIDResult: originalIssue,
+		updateIssueResult:   resolvedIssue,
+	}
+
+	handler := setupTestIssueHandler(mockService)
+	router := setupTestIssueRouter(handler, withAuthenticatedUser(userID))
+
+	req, err := net_http.NewRequest("POST", "/api/v1/issues/resolve-test-user/resolve", nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	w := net_httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != net_http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	if mockService.lastUpdateRequest.State != models.IssueStateResolved {
+		t.Errorf("expected state RESOLVED in update request, got %q", mockService.lastUpdateRequest.State)
+	}
+
+	if mockService.lastUpdateRequest.ResolvedByID != userID {
+		t.Errorf("expected resolvedById %q in update request, got %q", userID, mockService.lastUpdateRequest.ResolvedByID)
+	}
+
+	var response models.Issue
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	if err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if response.ResolvedByID != userID {
+		t.Errorf("expected resolvedById %q in response, got %q", userID, response.ResolvedByID)
 	}
 }

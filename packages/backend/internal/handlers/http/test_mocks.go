@@ -19,6 +19,7 @@ type MockIssueService struct {
 	deleteIssueError              error
 	updateIssueResult             *models.Issue
 	updateIssueError              error
+	lastUpdateRequest             dto.UpdateIssueRequest
 	findDuplicateIssueResult      *models.Issue
 	findDuplicateIssueResultError error
 	resolveIssuesByScopeResult    int64
@@ -40,6 +41,7 @@ func (m *MockIssueService) CreateIssue(ctx context.Context, req dto.CreateIssueR
 }
 
 func (m *MockIssueService) UpdateIssue(ctx context.Context, id string, req dto.UpdateIssueRequest) (*models.Issue, error) {
+	m.lastUpdateRequest = req
 	return m.updateIssueResult, m.updateIssueError
 }
 

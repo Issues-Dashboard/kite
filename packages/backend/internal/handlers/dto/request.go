@@ -75,15 +75,16 @@ type CreateLinkRequest struct {
 // All fields are optional. Only provided fields will be updated.
 // If ResolvedAt is non-zero, the issue will be considered resolved by the service.
 type UpdateIssueRequest struct {
-	Title       string               `json:"title"`
-	Description string               `json:"description"`
-	Severity    models.Severity      `json:"severity"`
-	IssueType   models.IssueType     `json:"issueType"`
-	State       models.IssueState    `json:"state"`
-	Namespace   string               `json:"namespace"`
-	Scope       ScopeReqBodyOptional `json:"scope"`
-	Links       []CreateLinkRequest  `json:"links"`
-	ResolvedAt  time.Time            `json:"resolvedAt"`
+	Title        string               `json:"title"`
+	Description  string               `json:"description"`
+	Severity     models.Severity      `json:"severity"`
+	IssueType    models.IssueType     `json:"issueType"`
+	State        models.IssueState    `json:"state"`
+	Namespace    string               `json:"namespace"`
+	Scope        ScopeReqBodyOptional `json:"scope"`
+	Links        []CreateLinkRequest  `json:"links"`
+	ResolvedAt   time.Time            `json:"resolvedAt"`
+	ResolvedByID string               `json:"resolvedById"`
 }
 
 // IssuePayload unifies CREATE and UPDATE payloads for issues so services can accept either.
@@ -97,6 +98,7 @@ type IssuePayload interface {
 	GetResolvedAt() time.Time
 	GetNamespace() string
 	GetScope() ScopePayload
+	GetResolvedByID() string
 }
 
 func (c CreateIssueRequest) GetTitle() string               { return c.Title }
@@ -107,6 +109,7 @@ func (c CreateIssueRequest) GetState() models.IssueState    { return c.State }
 func (c CreateIssueRequest) GetLinks() []CreateLinkRequest  { return c.Links }
 func (c CreateIssueRequest) GetScope() ScopePayload         { return c.Scope }
 func (c CreateIssueRequest) GetNamespace() string           { return c.Namespace }
+func (c CreateIssueRequest) GetResolvedByID() string        { return "" }
 func (c CreateIssueRequest) GetResolvedAt() time.Time {
 	// CREATE requests do not set a resolved time. Return a zero time value.
 	return time.Time{}
@@ -121,3 +124,4 @@ func (u UpdateIssueRequest) GetLinks() []CreateLinkRequest  { return u.Links }
 func (u UpdateIssueRequest) GetScope() ScopePayload         { return u.Scope }
 func (u UpdateIssueRequest) GetNamespace() string           { return u.Namespace }
 func (u UpdateIssueRequest) GetResolvedAt() time.Time       { return u.ResolvedAt }
+func (u UpdateIssueRequest) GetResolvedByID() string        { return u.ResolvedByID }
