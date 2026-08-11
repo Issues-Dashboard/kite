@@ -16,7 +16,6 @@ CREATE TABLE "public"."issues" (
  "state" character varying(20) NULL DEFAULT 'ACTIVE',
  "detected_at" timestamptz NOT NULL,
  "resolved_at" timestamptz NULL,
- "resolved_by_id" character varying(40) NULL DEFAULT NULL,
  "namespace" text NOT NULL,
  "scope_id" uuid NOT NULL,
  "created_at" timestamptz NULL,
