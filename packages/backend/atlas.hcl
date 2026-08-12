@@ -15,12 +15,8 @@ data "external_schema" "gorm" {
 }
 
 locals {
-  db_password = urlescape(getenv("KITE_DB_PASSWORD"))
-}
-
-variable "database_url" {
-  type    = string
-  default = "postgres://${getenv("KITE_DB_USER")}:${local.db_password}@${getenv("KITE_DB_HOST")}:${getenv("KITE_DB_PORT")}/${getenv("KITE_DB_NAME")}?sslmode=${getenv("KITE_DB_SSL_MODE")}"
+  db_password  = urlescape(getenv("KITE_DB_PASSWORD"))
+  database_url = "postgres://${getenv("KITE_DB_USER")}:${local.db_password}@${getenv("KITE_DB_HOST")}:${getenv("KITE_DB_PORT")}/${getenv("KITE_DB_NAME")}?sslmode=${getenv("KITE_DB_SSL_MODE")}"
 }
 
 # data.external_schema.gorm -> Run the program above to get schema info
@@ -31,7 +27,7 @@ env "local" {
   # doc: https://atlasgo.io/concepts/dev-database
   dev = "docker://postgres/13/dev?search_path=public"
   # URL to local, actual DB
-  url = var.database_url
+  url = local.database_url
   migration {
     dir = "file://migrations"
   }
@@ -44,7 +40,7 @@ env "local" {
 
 env "production" {
   src = data.external_schema.gorm.url
-  url = var.database_url
+  url = local.database_url
   migration {
     dir = "file://migrations"
   }
