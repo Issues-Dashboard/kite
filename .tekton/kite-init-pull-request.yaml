@@ -106,6 +106,10 @@ spec:
         description: Whether to enable privileged mode, should be used only with remote VMs
         name: privileged-nested
         type: string
+      - name: enable-package-registry-proxy
+        default: 'true'
+        description: Use the package registry proxy when prefetching dependencies
+        type: string
     results:
       - description: ""
         name: IMAGE_URL
@@ -173,6 +177,8 @@ spec:
             value: $(params.image-expires-after)
           - name: dev-package-managers
             value: "true"
+          - name: enable-package-registry-proxy
+            value: $(params.enable-package-registry-proxy)
         runAfter:
           - clone-repository
         taskRef:
