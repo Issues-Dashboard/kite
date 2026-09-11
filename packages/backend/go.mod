@@ -1,8 +1,6 @@
 module github.com/konflux-ci/kite
 
-go 1.24
-
-toolchain go1.24.4
+go 1.27
 
 require (
 	ariga.io/atlas-provider-gorm v0.5.6
