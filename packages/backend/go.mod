@@ -1,8 +1,6 @@
 module github.com/konflux-ci/kite
 
-go 1.24
-
-toolchain go1.24.4
+go 1.26.4
 
 require (
 	ariga.io/atlas-provider-gorm v0.5.6
@@ -20,7 +18,7 @@ require (
 )
 
 require (
-	ariga.io/atlas v0.36.2-0.20250806044935-5bb51a0a956e // indirect
+	ariga.io/atlas v1.3.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.2 // indirect
@@ -76,10 +74,10 @@ require (
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/term v0.34.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
