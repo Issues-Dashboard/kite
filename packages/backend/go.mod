@@ -1,8 +1,6 @@
 module github.com/konflux-ci/kite
 
-go 1.24
-
-toolchain go1.24.4
+go 1.26
 
 require (
 	ariga.io/atlas-provider-gorm v0.5.6
@@ -36,7 +34,7 @@ require (
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.1 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
-	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-playground/universal-translator v0.18.2 // indirect
 	github.com/go-playground/validator/v10 v10.27.0 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
