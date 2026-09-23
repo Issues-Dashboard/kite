@@ -1,8 +1,6 @@
 module github.com/konflux-ci/kite
 
-go 1.24
-
-toolchain go1.24.4
+go 1.25
 
 require (
 	ariga.io/atlas-provider-gorm v0.5.6
@@ -88,7 +86,7 @@ require (
 	gorm.io/driver/sqlserver v1.5.4 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250701173324-9bd5c66d9911 // indirect
-	k8s.io/utils v0.0.0-20250820121507-0af2bda4dd1d // indirect
+	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.6.0 // indirect
