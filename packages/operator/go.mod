@@ -16,7 +16,7 @@ require (
 require go.yaml.in/yaml/v2 v2.4.2 // indirect
 
 // Outside of operator-sdk
-require github.com/tektoncd/pipeline v1.3.1
+require github.com/tektoncd/pipeline v1.17.0
 
 require (
 	cel.dev/expr v0.24.0 // indirect
