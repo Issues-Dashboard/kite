@@ -1,5 +1,5 @@
 # Build stage - use go toolset
-FROM registry.redhat.io/rhel9/go-toolset@sha256:5e231f8c5eab7812a1e2c701ce48c63eb3bb02dc9f372d8fbb59e3e1cd9c493c AS builder
+FROM registry.redhat.io/rhel9/go-toolset@sha256:60fd6fb2998c40ad0d6561c34e83588b986a0cf7771f64e5e5c295ba87101f9b AS builder
 
 # Metadata
 LABEL name="KITE" \
