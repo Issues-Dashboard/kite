@@ -1,6 +1,6 @@
 module github.com/konflux-ci/kite/packages/operator
 
-go 1.24.0
+go 1.24.13
 
 require (
 	github.com/onsi/ginkgo/v2 v2.22.0
@@ -16,7 +16,7 @@ require (
 require go.yaml.in/yaml/v2 v2.4.2 // indirect
 
 // Outside of operator-sdk
-require github.com/tektoncd/pipeline v1.3.1
+require github.com/tektoncd/pipeline v1.3.4
 
 require (
 	cel.dev/expr v0.24.0 // indirect
