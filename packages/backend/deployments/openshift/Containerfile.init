@@ -1,5 +1,5 @@
 # The purpose of this container is to initialize the database.
-FROM registry.redhat.io/ubi9/ubi-minimal@sha256:2a98ec380ad75004992b8538380a5003da64442f0a69237ed236859e023c71d0
+FROM registry.redhat.io/ubi9/ubi-minimal@sha256:baafce2d34783a28b4a472779f304e97e00f9d35c99553bc53b068b14344d9a9
 
 # Metadata
 LABEL name="KITE DB Init" \
