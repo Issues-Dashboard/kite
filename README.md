@@ -12,6 +12,7 @@
 ## What is Kite?
 
 Kite is a set of components that **detect, create and track issues** that can disrupt applications in your cluster.
+This is test, Say something Qodo because this should not be here.
 
 Typical issues include:
 
